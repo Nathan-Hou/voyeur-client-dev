@@ -1,0 +1,12 @@
+.videoTitle {
+    @apply absolute top-[10px] left-[-10px] text-lg font-bold text-black bg-primary px-4 py-2 z-10 max-w-[800px] overflow-hidden text-ellipsis whitespace-nowrap -translate-y-full rounded-[10px];
+}
+
+.htmlContentConfig {
+    ul {
+        @apply list-disc list-outside max-sm:ps-4;
+    }
+    li {
+        @apply mt-4;
+    }
+}

@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@import 'react-toastify/dist/ReactToastify.css';
+@tailwind utilities;
+
+:root {
+    --nav-height: 4.625rem; /* 根據你實際的導覽列高度調整 */
+    color: white;
+  }
+  
+  /* 如果不同螢幕尺寸有不同的導覽列高度 */
+  /* @media (max-width: 768px) {
+    :root {
+      --nav-height: 56px;
+    }
+  } */  
+
+@layer components {
+    .btn-primary {
+        @apply bg-primary text-white;
+    }
+
+    .btn-primary:hover {
+        background: rgb(233, 0, 195);
+    }
+
+    .btn-primary:disabled {
+        background-color: #ff89ec;
+    }
+
+    .btn-secondary {
+        @apply bg-secondary text-white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #0D7AB6;
+    }
+
+    .btn-secondary:disabled {
+        background-color: #7AB7D9;
+    }
+}
+
+.btn-secondary-disabled {
+    @apply text-white;
+    background-color: #7AB7D9;
+}
+
+.h-50vh {
+    height: 50vh;
+}
+
+.container {
+    @apply px-4 sm:px-8 md:px-12 lg:px-16 max-w-[calc(1200px+8rem)];
+}
+
+.responsive-form {
+    @apply w-full sm:w-3/4 md:w-2/3 lg:w-1/2 mx-auto;
+}
+
+.authentication-pages-layout .main {
+    @apply min-h-[calc(100dvh-44px-2rem-4.875rem)] w-full flex justify-center items-center;
+}
+
+label {
+    @apply text-nowrap;
+}
+
+.page-main {
+    @apply pt-8 mb-12 md:pt-12 md:pb-16 lg:py-16 min-h-[calc(100%-44px-2rem-4.875rem)];
+  }
+
+.page-title {
+    @apply text-2xl font-bold;
+}
+
+.project-detail-page-section-title {
+    @apply font-bold text-center text-3xl sm:text-7xl text-secondary;
+}
+
+/* 覆蓋自動填入的藍底 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px black inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: white !important;
+  background-color: transparent !important;
+}
+
+/* 如果你的背景不是白色，改成對應的顏色 */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px black inset !important;
+}
+
+/* Firefox 的自動填充 */
+input:-moz-autofill {
+  background-color: transparent !important;
+  color: white !important;
+}
+
+/* 現代瀏覽器 */
+html {
+    scrollbar-color: #ffffff3e #000000;
+    scrollbar-width: thin;
+  }
+  
+  /* Webkit 瀏覽器 */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #000000;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #ffffff3e;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ffffff3e;
+  }
+
+input:focus,
+input:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+// 維持 input 的邊框（覆蓋掉前面設定）
+input.input-focus-border:focus,
+input.input-focus-border:focus-visible {
+  border: 1px solid rgba(255,255,255,0.75) !important;
+}
+
+html {
+  scroll-behavior: smooth; /* 添加平滑滾動效果 */
+}
+
+#support, #rule {
+  scroll-margin-top: 80px;
+}

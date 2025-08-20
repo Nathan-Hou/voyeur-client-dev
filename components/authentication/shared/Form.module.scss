@@ -1,0 +1,63 @@
+.loginForm>.formItem {
+    @apply mt-2.5 2xl:mt-5;
+}
+
+.registerForm>.formItem {
+    @apply mt-[10px] w-full;
+}
+
+.formItem.halfWidth {
+    width: calc(50% - 0.5rem) !important;
+}
+
+.formItem label {
+    @apply text-white;
+}
+
+.formItem>div:first-child {
+    @apply flex items-center py-3 px-4 sm:px-6 border border-white/75;
+    border-radius: 10px;
+
+    input {
+        @apply text-white ms-4 bg-transparent block w-full;
+    }
+}
+
+.registerForm>.formItem>div:first-child {
+    @apply max-2xl:!py-2;
+}
+
+.formItem>p:nth-child(2), .agreeToTerms>p:nth-child(2) {
+    @apply text-sm text-red-600;
+}
+
+.mainBtn {
+    @apply w-full py-3 text-base rounded-[10px];
+}
+
+.agreeToTerms {
+    @apply ml-2;
+
+    >div:first-child {
+        @apply relative flex items-center;
+    }
+
+    label {
+        @apply pl-5;
+    }
+
+    >div:nth-child(2) {
+        @apply mt-1 text-sm text-red-600;
+    }
+}
+
+.agreeToTermsCheckbox {
+    @apply w-4 h-4 appearance-none border border-black rounded-full checked:bg-secondary checked:border-transparent focus:outline-none cursor-pointer;
+}
+
+.formItem .pwdInput {
+    width: calc(100% - 3.5rem) !important;
+    @media screen and (min-width: 640px) {
+        width: calc(100% - 4rem) !important;
+    }
+}

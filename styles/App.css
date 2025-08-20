@@ -1,0 +1,353 @@
+.App {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.split-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.video-container {
+  flex: 1;
+  padding: 20px;
+}
+
+.three-container {
+  flex: 1;
+  background: #000;
+}
+
+video {
+  width: 100%;
+  height: auto;
+  background: #000;
+}
+
+.video-player {
+  position: relative;
+  width: 100%;
+  /* height: 100vh; */
+  height: 100%;
+  /* overflow: hidden; */
+}
+
+.App.fullscreen {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 嵌入式模式的新樣式 */
+.App.embedded {
+  @apply relative overflow-hidden border border-primary rounded-[10px];
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.canvas-container-embedded {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.video-switcher {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.switch-button {
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  padding: 15px 20px;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+}
+
+.switch-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.switch-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* 控制按鈕的顯示/隱藏 */
+.ui-hidden .switch-button {
+  opacity: 0;
+}
+
+.ui-visible .switch-button {
+  opacity: 1;
+}
+
+/* 手機版樣式調整 */
+@media (max-width: 768px) {
+  .switch-button {
+    padding: 12px 15px;
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.controls-container {
+  /* position: absolute;
+  bottom: 0;
+  left: 0; */
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  width: 100%;
+}
+
+.controls-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.controls-container.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 針對 iPhone 的底部安全區域 */
+/* @supports (padding: env(safe-area-inset-bottom)) {
+  .controls-container {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+} */
+
+/* 手機版特別處理 */
+/* @media (max-width: 768px) {
+  .video-player {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  .controls-container {
+    bottom: env(safe-area-inset-bottom, 0);
+  }
+} */
+
+/* 確保在 iPhone 上的工具列不會遮擋內容 */
+/* @supports (padding: env(safe-area-inset-bottom)) {
+  .App {
+    min-height: -webkit-fill-available;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+} */
+
+.alert-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  z-index: 2000;
+  text-align: center;
+  max-width: 80%;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s linear 0.3s, opacity 0.3s ease;
+}
+
+.alert-message.show {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.alert-message.hide {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* 手機版樣式 */
+@media (max-width: 768px) {
+  .alert-message {
+    font-size: 14px;
+    padding: 12px 20px;
+    width: 80%;
+  }
+}
+
+/* 確保列表頁面的 Canvas 填滿 16:9 容器 */
+.App.embedded canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* 列表頁面的控制項調整 */
+.App.embedded .video-switcher {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.App.embedded .video-switcher .switch-button {
+  pointer-events: all;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.App.embedded .controls-container {
+  /* position: absolute;
+  bottom: 0;
+  left: 0; */
+  /* z-index: 10; */
+  width: 100%;
+}
+
+/* 支援舊瀏覽器的 aspect-ratio 備用方案（只針對列表頁面） */
+@supports not (aspect-ratio: 16 / 9) {
+  .App.embedded {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 比例 */
+  }
+  
+  .App.embedded .video-player {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* 🔥 載入動畫樣式 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner-ring {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top: 4px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* 全螢幕模式的載入動畫 */
+.App.fullscreen .loading-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.App.fullscreen .spinner-ring {
+  width: 80px;
+  height: 80px;
+  border-width: 6px;
+}
+
+.App.fullscreen .loading-text {
+  font-size: 20px;
+}

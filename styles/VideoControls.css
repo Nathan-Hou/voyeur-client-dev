@@ -1,0 +1,492 @@
+/* .video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  color: white;
+  z-index: 1000;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.control-button {
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.time-control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-display {
+  font-family: monospace;
+  min-width: 100px;
+}
+
+.progress-slider,
+.volume-slider,
+.fov-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  outline: none;
+}
+
+.progress-slider::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb,
+.fov-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.volume-control,
+.fov-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-grow: 1;
+}
+
+@media (max-width: 320px) {
+  .video-controls {
+    padding: 5px;
+  }
+} */
+
+
+
+/* VideoControls.css */
+
+/* .video-controls-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.center-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.control-button-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.control-button-center:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.control-button-center:active {
+  transform: scale(0.95);
+}
+
+.play-pause-button {
+  width: 72px;
+  height: 72px;
+}
+
+.exit-fullscreen-button {
+  width: 56px;
+  height: 56px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.exit-fullscreen-button:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 768px) {
+  .control-button-center {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .play-pause-button {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .exit-fullscreen-button {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .center-controls {
+    gap: 12px;
+  }
+} */
+
+
+
+
+
+/* VideoControls.css */
+
+/* .screen-click-area { */
+.screen-interaction-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 500;
+    /* cursor: pointer; */
+    background: transparent;
+    pointer-events: none; /* 關鍵修改：不攔截事件 */
+  }
+  
+  .video-controls-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    pointer-events: none; /*讓背景可以接收點擊事件 */
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  
+  .controls-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .controls-hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+  
+  .center-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    pointer-events: auto; /* 恢復按鈕的點擊事件 */
+  }
+  
+  .control-button-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  .control-button-center:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+  
+  .control-button-center:active {
+    transform: scale(0.95);
+  }
+  
+  .play-pause-button {
+    /* 主要的播放/暫停按鈕可以稍大一些 */
+    width: 50px;
+    height: 50px;
+  }
+  
+  .exit-fullscreen-button {
+    /* 退出全螢幕按鈕稍小一些 */
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  
+  .exit-fullscreen-button:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+  
+  /* 新增：全螢幕模式的完整控制介面 */
+  .video-controls-fullscreen {
+    /* width: 100%; */
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    z-index: 1000;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  
+  .fullscreen-controls {
+    background: rgba(0, 0, 0, 0.75);
+    /* border-radius: 12px; */
+    padding: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* width: 40px;
+    height: 40px; */
+    /* background: rgba(255, 255, 255, 0.1); */
+    /* border: 1px solid rgba(255, 255, 255, 0.2); */
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .control-button:hover {
+    /* background: rgba(255, 255, 255, 0.2); */
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  
+  .time-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 200px;
+    @apply flex-grow flex-shrink;
+  }
+  
+  .time-display {
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  .progress-slider,
+  .volume-slider,
+  .fov-slider {
+    appearance: none;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  
+  .progress-slider {
+    flex: 1;
+    min-width: 100px;
+  }
+  
+  .volume-slider,
+  .fov-slider {
+    width: 80px;
+  }
+  
+  .progress-slider::-webkit-slider-thumb,
+  .volume-slider::-webkit-slider-thumb,
+  .fov-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .progress-slider::-webkit-slider-thumb:hover,
+  .volume-slider::-webkit-slider-thumb:hover,
+  .fov-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+  
+  /* 🔥 基本觸控優化（保持原始樣式） */
+  @supports (-webkit-touch-callout: none) {
+    .progress-slider,
+    .volume-slider,
+    .fov-slider {
+      /* 基本的 iOS 觸控優化 */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  }
+  
+
+
+  
+  .volume-control,
+  .fov-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    @apply flex-grow flex-shrink;
+  
+    input {
+      @apply flex-grow flex-shrink;
+    }
+  }
+  
+  .exit-fullscreen-button {
+    /* 退出全螢幕按鈕稍小一些 */
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  
+  .exit-fullscreen-button:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+  
+  /* 響應式設計 */
+  @media (max-width: 768px) {
+    .control-button-center, .exit-fullscreen-button {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .play-pause-button {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .exit-fullscreen-button {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .center-controls {
+      gap: 12px;
+    }
+  }
+  
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .video-controls-fullscreen {
+      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+      z-index: 9000 !important;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .video-controls-fullscreen {
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 9000 !important;
+      /* 嘗試往上推高，避免被底部工具列遮住 */
+      /* margin-bottom: 37px !important; */
+      position: fixed !important;
+    }
+  }
+  
+  @media (max-width: 768px) and (-webkit-min-device-pixel-ratio: 2) {
+    .video-controls-fullscreen {
+      /* margin-bottom: 37px !important; */
+      position: fixed !important;
+    }
+  }
+
+  /* 🔥 自動播放被阻擋提示樣式 */
+  .autoplay-blocked-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .autoplay-blocked-message {
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: white;
+    pointer-events: auto;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .play-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    animation: pulse 2s infinite;
+  }
+
+  .message-text {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .autoplay-blocked-message {
+      padding: 16px;
+      margin: 20px;
+    }
+
+    .play-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .message-text {
+      font-size: 14px;
+    }
+  }
