@@ -803,23 +803,21 @@ function ThreejsCanvasComponent({
             if (videoRef.current && !videoRef.current.paused) {
               videoRef.current.pause();
               setIsPlaying(false);
+              console.log(`[${instanceId.current}] Page hidden - video paused`);
             }
           } else {
-            // 🔥 iOS 頁面重新可見時，模擬切換視角的修復方法
+            // 🔥 iOS 頁面重新可見時，只修復 VideoTexture，不自動播放
             if (videoRef.current && isIOS) {
+              console.log(`[${instanceId.current}] Page visible again - fixing VideoTexture without auto-play`);
+              
               // 延遲一點時間確保頁面完全恢復
               setTimeout(() => {
                 if (videoRef.current && sphereRef.current) {
                   try {
-                    // 先暫停影片
-                    const wasPlaying = !videoRef.current.paused;
+                    // 保存當前時間位置
                     const currentTime = videoRef.current.currentTime;
                     
-                    if (wasPlaying) {
-                      videoRef.current.pause();
-                    }
-                    
-                    // 🔥 基於您的發現：模擬切換視角來修復畫面
+                    // 🔥 簡化修復：只重新創建 VideoTexture，不自動播放
                     // 先隱藏球體
                     sphereRef.current.visible = false;
                     
@@ -830,12 +828,10 @@ function ThreejsCanvasComponent({
                         videoTexture.minFilter = THREE.LinearFilter;
                         videoTexture.magFilter = THREE.LinearFilter;
                         videoTexture.format = THREE.RGBAFormat;
-                        // videoTexture.encoding = THREE.sRGBEncoding;
                         videoTexture.colorSpace = 'srgb';
                         
                         // 更新材質
                         sphereRef.current.material.map = videoTexture;
-                        // sphereRef.current.material.encoding = THREE.sRGBEncoding;
                         sphereRef.current.material.needsUpdate = true;
                         
                         // 強制重新渲染
@@ -846,63 +842,15 @@ function ThreejsCanvasComponent({
                         // 強制更新 VideoTexture
                         videoTexture.needsUpdate = true;
                         
-                        // 重新顯示球體（模擬切換視角的效果）
+                        // 重新顯示球體
                         sphereRef.current.visible = true;
                         
-                        // 如果之前在播放，重新開始播放
-                        if (wasPlaying) {
-                          setTimeout(() => {
-                            if (videoRef.current) {
-                              // 確保時間位置正確
-                              videoRef.current.currentTime = currentTime;
-                              videoRef.current.play().catch(error => {
-                                console.warn(`[${instanceId.current}] Failed to resume playback:`, error);
-                              });
-                            }
-                          }, 200);
-                        }
+                        // 🔥 重要：不自動播放，只恢復畫面
+                        // 使用者需要手動點擊播放按鈕
+                        console.log(`[${instanceId.current}] VideoTexture fixed - video remains paused, user must click play`);
                         
-                        console.log(`[${instanceId.current}] VideoTexture fixed by visibility toggle for iOS`);
                       }
                     }, 100);
-                    
-                    // 🔥 備用方案：如果隱藏/顯示不夠，真的切換視角
-                    setTimeout(() => {
-                      if (videoRef.current && isIOS && localFullscreen) {
-                        // 檢查是否還有問題，如果有就真的切換視角
-                        const currentSources = getCurrentVideoSources();
-                        if (currentSources.length > 1) {
-                          // 保存當前狀態
-                          const currentCameraIndex = currentCameraIndex;
-                          const currentVideoIndex = currentVideoIndex;
-                          
-                          // 切換到下一個視角
-                          const nextCameraIndex = (currentCameraIndex + 1) % currentSources.length;
-                          
-                          // 執行切換
-                          setCurrentCameraIndex(nextCameraIndex);
-                          loadVideo(currentVideoIndex, nextCameraIndex, {
-                            currentTime: currentTime,
-                            isPlaying: wasPlaying,
-                            fov: 90,
-                            angles: { yaw: 90 }
-                          });
-                          
-                          // 延遲切換回來
-                          setTimeout(() => {
-                            setCurrentCameraIndex(currentCameraIndex);
-                            loadVideo(currentVideoIndex, currentCameraIndex, {
-                              currentTime: currentTime,
-                              isPlaying: wasPlaying,
-                              fov: 90,
-                              angles: { yaw: 90 }
-                            });
-                          }, 500);
-                          
-                          console.log(`[${instanceId.current}] Real camera switch recovery for iOS fullscreen`);
-                        }
-                      }
-                    }, 2000); // 2秒後檢查是否需要真的切換視角
                     
                   } catch (error) {
                     console.warn(`[${instanceId.current}] Failed to fix VideoTexture:`, error);
