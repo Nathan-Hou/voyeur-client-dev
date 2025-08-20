@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, Suspense, useState, useCallback, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import '@/styles/App.css';
@@ -13,6 +13,29 @@ import Alert from '@/components/Alert';
 import CanvasResizer from './CanvasResizer';
 
 import s from "@/components/Videos/[name]/Content.module.scss";
+
+// 🔥 WebGL Context 監聽器組件
+function GLContextGuard({ onLost, onRestored }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const handleLost = (e) => {
+      // 阻止預設行為，否則無法自動還原
+      e.preventDefault();
+      if (onLost) onLost();
+    };
+    const handleRestored = () => {
+      if (onRestored) onRestored();
+    };
+    canvas.addEventListener('webglcontextlost', handleLost, false);
+    canvas.addEventListener('webglcontextrestored', handleRestored, false);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleLost, false);
+      canvas.removeEventListener('webglcontextrestored', handleRestored, false);
+    };
+  }, [gl, onLost, onRestored]);
+  return null;
+}
 
 // 🔥 全域全螢幕管理器
 if (typeof window !== 'undefined' && !window.fullscreenManager) {
@@ -123,6 +146,13 @@ function ThreejsCanvasComponent({
     const hlsRef = useRef(null);
     const sphereRef = useRef(null); // 🔥 新增 sphereRef 用於 iOS VideoTexture 修復
     const canvasRef = useRef(null); // 🔥 新增 canvasRef 用於強制重新渲染
+    
+    // 🔥 追蹤目前實際播放 URL（供硬復原）
+    const currentVideoUrlRef = useRef(null);
+    
+    // 🔥 追蹤 presentedFrames 以檢查是否真的在更新
+    const lastPresentedFramesRef = useRef(0);
+    const resumeWatchdogTimerRef = useRef(null);
     
     const isListMode = videoList !== null;
     
@@ -370,6 +400,128 @@ function ThreejsCanvasComponent({
         }
       }
     }, []);
+    
+    // 🔥 重新建立 VideoTexture 並套回材質（軟性復原）
+    const rebuildVideoTexture = useCallback(() => {
+      if (!videoRef.current || !sphereRef.current) return;
+      try {
+        const tex = new THREE.VideoTexture(videoRef.current);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        // three r150+：使用 colorSpace 而非 encoding
+        tex.colorSpace = THREE.SRGBColorSpace;
+
+        const mat = sphereRef.current.material;
+        if (mat) {
+          if (mat.map && mat.map.dispose) mat.map.dispose(); // 清掉舊貼圖避免殘留
+          mat.map = tex;
+          mat.needsUpdate = true;
+        }
+        // 強制場景更新
+        if (sphereRef.current.parent) sphereRef.current.parent.updateMatrixWorld(true);
+        tex.needsUpdate = true;
+        // console.log('Soft rebuilt VideoTexture');
+      } catch (e) {
+        console.warn('rebuildVideoTexture failed:', e);
+      }
+    }, []);
+
+    // 🔥 硬性復原：重新掛載來源（iOS 走原生 HLS；其他走 hls.js）
+    const hardReloadVideo = useCallback(async (time, wasPlaying) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      try {
+        if (hlsRef.current) {
+          // hls.js 路徑
+          try {
+            hlsRef.current.detachMedia();
+            hlsRef.current.attachMedia(video);
+            hlsRef.current.startLoad(time || 0);
+            // console.log('HLS hard reload via detach/attach');
+          } catch (e) {
+            console.warn('HLS hard reload failed, try recoverMediaError:', e);
+            try { hlsRef.current.recoverMediaError(); } catch {}
+          }
+        } else if (video.canPlayType && video.canPlayType('application/vnd.apple.mpegurl')) {
+          // iOS / Safari 原生 HLS
+          const src = currentVideoUrlRef.current;
+          if (src) {
+            video.src = src;
+            video.load();
+            await new Promise((resolve) => {
+              const onLoaded = () => { video.removeEventListener('loadedmetadata', onLoaded); resolve(); };
+              video.addEventListener('loadedmetadata', onLoaded, { once: true });
+            });
+            if (time) video.currentTime = time;
+          }
+        }
+
+        // 重建貼圖
+        rebuildVideoTexture();
+
+        if (wasPlaying) {
+          try { 
+            await video.play(); 
+            setIsPlaying(true);
+          } catch (e) {
+            console.warn('play after hard reload failed:', e);
+          }
+        }
+        // console.log('Hard reload done');
+      } catch (e) {
+        console.warn('hardReloadVideo error:', e);
+      }
+    }, [rebuildVideoTexture, setIsPlaying]);
+
+    // 🔥 啟動回前景後的監看：若只有聲音、畫面不動 → 硬復原
+    const startResumeWatchdog = useCallback(() => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      // 清舊計時
+      if (resumeWatchdogTimerRef.current) {
+        clearTimeout(resumeWatchdogTimerRef.current);
+        resumeWatchdogTimerRef.current = null;
+      }
+      lastPresentedFramesRef.current = 0;
+
+      // 使用 requestVideoFrameCallback 觀察畫面是否有更新
+      const hasRVFC = typeof video.requestVideoFrameCallback === 'function';
+      let rvfcId = null;
+
+      const onFrame = (_now, meta) => {
+        // iOS/Safari 會回傳 presentedFrames
+        if (meta && typeof meta.presentedFrames === 'number') {
+          lastPresentedFramesRef.current = meta.presentedFrames;
+        } else {
+          // 沒 meta 時，仍持續排 callback 以示活性
+          lastPresentedFramesRef.current += 1;
+        }
+        if (!document.hidden && hasRVFC) {
+          rvfcId = video.requestVideoFrameCallback(onFrame);
+        }
+      };
+
+      if (hasRVFC) {
+        rvfcId = video.requestVideoFrameCallback(onFrame);
+      }
+
+      // 800ms 後檢查：若在播放而 frames 沒前進，做硬復原
+      resumeWatchdogTimerRef.current = setTimeout(async () => {
+        resumeWatchdogTimerRef.current = null;
+        const frames = lastPresentedFramesRef.current;
+        const wasPlaying = !video.paused;
+        const audioLikelyPlaying = video.readyState >= 2;
+        if (audioLikelyPlaying && wasPlaying && frames === 0) {
+          const t = video.currentTime;
+          await hardReloadVideo(t, wasPlaying);
+        }
+        if (rvfcId && video.cancelVideoFrameCallback) {
+          try { video.cancelVideoFrameCallback(rvfcId); } catch {}
+        }
+      }, 800);
+    }, [hardReloadVideo]);
   
     const saveCurrentState = useCallback(() => {
       const video = videoRef.current;
@@ -503,6 +655,9 @@ function ThreejsCanvasComponent({
         }
         videoUrl = videoSources[cameraIndex];
       }
+
+      // 🔥 記住目前 URL（供硬復原用）
+      currentVideoUrlRef.current = videoUrl;
 
       // 🔥 開始載入動畫
       setIsLoading(true);
@@ -797,75 +952,62 @@ function ThreejsCanvasComponent({
       }, [isLoading, showAlert, getCurrentVideoSources]);
   
       useEffect(() => {
-        const handleVisibilityChange = () => {
-          if (document.hidden) {
-            // 🔥 iOS 頁面隱藏時暫停影片
-            if (videoRef.current && !videoRef.current.paused) {
-              videoRef.current.pause();
-              setIsPlaying(false);
-              console.log(`[${instanceId.current}] Page hidden - video paused`);
-            }
-          } else {
-            // 🔥 iOS 頁面重新可見時，只修復 VideoTexture，不自動播放
-            if (videoRef.current && isIOS) {
-              console.log(`[${instanceId.current}] Page visible again - fixing VideoTexture without auto-play`);
-              
-              // 延遲一點時間確保頁面完全恢復
-              setTimeout(() => {
-                if (videoRef.current && sphereRef.current) {
-                  try {
-                    // 保存當前時間位置
-                    const currentTime = videoRef.current.currentTime;
-                    
-                    // 🔥 簡化修復：只重新創建 VideoTexture，不自動播放
-                    // 先隱藏球體
-                    sphereRef.current.visible = false;
-                    
-                    setTimeout(() => {
-                      if (sphereRef.current) {
-                        // 重新創建 VideoTexture
-                        const videoTexture = new THREE.VideoTexture(videoRef.current);
-                        videoTexture.minFilter = THREE.LinearFilter;
-                        videoTexture.magFilter = THREE.LinearFilter;
-                        videoTexture.format = THREE.RGBAFormat;
-                        videoTexture.colorSpace = 'srgb';
-                        
-                        // 更新材質
-                        sphereRef.current.material.map = videoTexture;
-                        sphereRef.current.material.needsUpdate = true;
-                        
-                        // 強制重新渲染
-                        if (sphereRef.current.parent) {
-                          sphereRef.current.parent.updateMatrixWorld(true);
-                        }
-                        
-                        // 強制更新 VideoTexture
-                        videoTexture.needsUpdate = true;
-                        
-                        // 重新顯示球體
-                        sphereRef.current.visible = true;
-                        
-                        // 🔥 重要：不自動播放，只恢復畫面
-                        // 使用者需要手動點擊播放按鈕
-                        console.log(`[${instanceId.current}] VideoTexture fixed - video remains paused, user must click play`);
-                        
-                      }
-                    }, 100);
-                    
-                  } catch (error) {
-                    console.warn(`[${instanceId.current}] Failed to fix VideoTexture:`, error);
-                  }
-                }
-              }, 500);
-            }
+        // iOS / Safari：從背景回來或 bfcache 還原時，先做軟性復原 + 監看
+        const onVisible = () => {
+          if (!isIOS) return;
+          const video = videoRef.current;
+          if (!video) return;
+
+          // 先暫停、記時間與狀態（避免聲音繼續跑）
+          const wasPlaying = !video.paused;
+          const t = video.currentTime;
+          if (wasPlaying) {
+            try { video.pause(); } catch {}
           }
+
+          // 軟性復原：重建 VideoTexture
+          rebuildVideoTexture();
+
+          // 嘗試恢復播放
+          const tryResume = async () => {
+            try {
+              if (t) video.currentTime = t;
+              if (wasPlaying) {
+                await video.play();
+                setIsPlaying(true);
+              }
+            } catch (e) {
+              // 需要手點播放就顯示 overlay 提示
+              setAutoplayBlocked(true);
+            }
+          };
+          tryResume();
+
+          // 啟動監看：若只有聲音、畫面不動 → 硬復原
+          startResumeWatchdog();
         };
-  
+
+        const handleVisibilityChange = () => {
+          if (!document.hidden) onVisible();
+        };
+
+        const handlePageShow = (e) => {
+          // bfcache 還原（iOS 常見）
+          if (e && e.persisted) onVisible();
+        };
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('pageshow', handlePageShow);
+
         return () => {
           document.removeEventListener('visibilitychange', handleVisibilityChange);
+          window.removeEventListener('pageshow', handlePageShow);
+          if (resumeWatchdogTimerRef.current) {
+            clearTimeout(resumeWatchdogTimerRef.current);
+            resumeWatchdogTimerRef.current = null;
+          }
         };
-      }, [isIOS]);
+      }, [isIOS, rebuildVideoTexture, startResumeWatchdog, setIsPlaying]);
   
       useEffect(() => {
         return () => {
@@ -876,6 +1018,11 @@ function ThreejsCanvasComponent({
           }
           if (alertTimeoutRef.current) {
             clearTimeout(alertTimeoutRef.current);
+          }
+          
+          if (resumeWatchdogTimerRef.current) {
+            clearTimeout(resumeWatchdogTimerRef.current);
+            resumeWatchdogTimerRef.current = null;
           }
           
           if (typeof window !== 'undefined' && window.videoInstances) {
@@ -1242,6 +1389,22 @@ function ThreejsCanvasComponent({
                 >
                   <Suspense fallback={null}>
                     <Canvas ref={canvasRef}>
+                      <GLContextGuard
+                        onLost={() => {
+                          // WebGL 被系統回收時先把材質清空避免殘影
+                          if (sphereRef.current && sphereRef.current.material) {
+                            const m = sphereRef.current.material;
+                            if (m.map && m.map.dispose) m.map.dispose();
+                            m.map = null;
+                            m.needsUpdate = true;
+                          }
+                        }}
+                        onRestored={() => {
+                          // 還原後重建貼圖，再啟動 watchdog
+                          rebuildVideoTexture();
+                          startResumeWatchdog();
+                        }}
+                      />
                       <CanvasResizer isFullscreen={localFullscreen} />
                       <PerspectiveCamera 
                         ref={cameraRef}
