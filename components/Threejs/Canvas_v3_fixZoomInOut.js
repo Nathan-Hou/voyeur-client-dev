@@ -14,6 +14,15 @@ import CanvasResizer from './CanvasResizer';
 
 import s from "@/components/Videos/[name]/Content.module.scss";
 
+// 🔥 iOS 和 Safari 检测
+const isIOS = typeof navigator !== 'undefined'
+  ? /iPad|iPhone|iPod/.test(navigator.userAgent)
+  : false;
+
+const isSafari = typeof navigator !== 'undefined'
+  ? /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  : false;
+
 // 🔥 WebGL Context 監聽器組件
 function GLContextGuard({ onLost, onRestored }) {
   const { gl } = useThree();
@@ -631,7 +640,7 @@ function ThreejsCanvasComponent({
   
     const loadVideo = useCallback((videoIndex, cameraIndex, previousState = null, direction = null, customAngles = null, shouldPlay = null) => {
       const video = videoRef.current;
-      if (!video || !Hls.isSupported()) return;
+      if (!video) return;
 
       let videoUrl = '';
       
@@ -677,116 +686,185 @@ function ThreejsCanvasComponent({
         state.angles = calculateNewAngles(state.angles, direction);
       }
 
-      const hls = new Hls({
-        startPosition: state.currentTime, // 🔥 加上這個
-        lowLatencyMode: false,
-        enableWorker: true
-      });
-      
-      hlsRef.current = hls;
-      hls.loadSource(videoUrl);
-      hls.attachMedia(video);
+      // 🔥 强制 Safari / iOS 用原生 HLS
+      const forceNativeHls = isIOS || isSafari;
 
-      // ✅ 改成在 MEDIA_ATTACHED 後觸發 startLoad
-      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-        hls.startLoad(state.currentTime);
-      });
-
-      // 🔥 新增 canplay 事件處理
-      const handleCanPlay = () => {
-        // 🔥 確保在 canplay 事件觸發後才設定 currentTime
-        if (state.currentTime > 0) {
-          video.currentTime = state.currentTime;
-        }
+      if (forceNativeHls && video.canPlayType('application/vnd.apple.mpegurl')) {
+        cleanupHls();                          // 确保没有 hls.js 残留
+        const v = videoRef.current;
+        v.src = videoUrl;                      // 原生 HLS
+        v.load();                              // 让解码器重置
         
-        // 🔥 移除事件監聽器，避免重複觸發
-        video.removeEventListener('canplay', handleCanPlay);
-        
-        // 🔥 設定相機角度
-        setTimeout(() => {
-          let targetYaw = null;
-
-          if (customAngles) {
-            targetYaw = customAngles.yaw;
-          }
-          else if (!previousState && (initialYaw !== null)) {
-            targetYaw = initialYaw;
-          }
-          else if (state.angles) {
-            targetYaw = state.angles.yaw * (180 / Math.PI);
-          }
-
-          if (targetYaw !== null) {
-            setCameraAnglesWhenReady(targetYaw);
-          }
-        }, 100);
-
-        // 🔥 嘗試播放
-        if (state.isPlaying) {
-          if (pauseOthersOnPlay) {
-            pauseOtherInstances();
+        // 原生 HLS 的 canplay 处理
+        const handleCanPlay = () => {
+          if (state.currentTime > 0) {
+            v.currentTime = state.currentTime;
           }
           
-          video.play()
-            .then(() => {
-              setIsPlaying(true);
-              setIsLoading(false);
-            })
-            .catch(error => {
-              console.error(`[${instanceId.current}] Autoplay blocked:`, error);
-              setIsPlaying(false);
-              setIsLoading(false);
-              setAutoplayBlocked(true); // 🔥 設定自動播放被阻擋狀態
-              
-              // 🔥 顯示自動播放被阻擋的提示
-              showAlert('需點擊畫面才能播放影片');
-            });
-        } else {
-          setIsPlaying(false);
-          setIsLoading(false);
-        }
-      };
+          v.removeEventListener('canplay', handleCanPlay);
+          
+          setTimeout(() => {
+            let targetYaw = null;
 
-      // 🔥 監聽 canplay 事件
-      video.addEventListener('canplay', handleCanPlay);
+            if (customAngles) {
+              targetYaw = customAngles.yaw;
+            }
+            else if (!previousState && (initialYaw !== null)) {
+              targetYaw = initialYaw;
+            }
+            else if (state.angles) {
+              targetYaw = state.angles.yaw * (180 / Math.PI);
+            }
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (isListMode) {
-          // console.log(`[${instanceId.current}] Video loaded - Video: ${videoIndex + 1}, Camera: ${cameraIndex + 1}, URL: ${videoUrl}`);
-        } else {
-          // console.log(`[${instanceId.current}] Video loaded - Camera: ${cameraIndex + 1}, URL: ${videoUrl}`);
-        }
-        
-        // 🔥 如果影片已經可以播放，直接觸發 canplay 處理
-        if (video.readyState >= 3) {
-          handleCanPlay();
-        }
-      });
+            if (targetYaw !== null) {
+              setCameraAnglesWhenReady(targetYaw);
+            }
+          }, 100);
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error(`[${instanceId.current}] HLS Error:`, data);
-        setIsLoading(false);
-        
-        // 🔥 移除 canplay 事件監聽器
-        video.removeEventListener('canplay', handleCanPlay);
-        
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log(`[${instanceId.current}] Trying to recover from network error`);
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log(`[${instanceId.current}] Trying to recover from media error`);
-              hls.recoverMediaError();
-              break;
-            default:
-              console.error(`[${instanceId.current}] Fatal error, cannot recover`);
-              cleanupHls();
-              break;
+          if (state.isPlaying) {
+            if (pauseOthersOnPlay) {
+              pauseOtherInstances();
+            }
+            
+            v.play()
+              .then(() => {
+                setIsPlaying(true);
+                setIsLoading(false);
+              })
+              .catch(error => {
+                console.error(`[${instanceId.current}] Autoplay blocked:`, error);
+                setIsPlaying(false);
+                setIsLoading(false);
+                setAutoplayBlocked(true);
+                
+                showAlert('需點擊畫面才能播放影片');
+              });
+          } else {
+            setIsPlaying(false);
+            setIsLoading(false);
           }
-        }
-      });
+        };
+
+        v.addEventListener('canplay', handleCanPlay);
+        
+      } else if (Hls.isSupported()) {
+        // 非 Safari / iOS 才用 hls.js
+        const hls = new Hls({
+          startPosition: state.currentTime,
+          lowLatencyMode: false,
+          enableWorker: true
+        });
+        
+        hlsRef.current = hls;
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.startLoad(state.currentTime));
+
+        // 🔥 新增 canplay 事件處理
+        const handleCanPlay = () => {
+          // 🔥 確保在 canplay 事件觸發後才設定 currentTime
+          if (state.currentTime > 0) {
+            video.currentTime = state.currentTime;
+          }
+          
+          // 🔥 移除事件監聽器，避免重複觸發
+          video.removeEventListener('canplay', handleCanPlay);
+          
+          // 🔥 設定相機角度
+          setTimeout(() => {
+            let targetYaw = null;
+
+            if (customAngles) {
+              targetYaw = customAngles.yaw;
+            }
+            else if (!previousState && (initialYaw !== null)) {
+              targetYaw = initialYaw;
+            }
+            else if (state.angles) {
+              targetYaw = state.angles.yaw * (180 / Math.PI);
+            }
+
+            if (targetYaw !== null) {
+              setCameraAnglesWhenReady(targetYaw);
+            }
+          }, 100);
+
+          // 🔥 嘗試播放
+          if (state.isPlaying) {
+            if (pauseOthersOnPlay) {
+              pauseOtherInstances();
+            }
+            
+            video.play()
+              .then(() => {
+                setIsPlaying(true);
+                setIsLoading(false);
+              })
+              .catch(error => {
+                console.error(`[${instanceId.current}] Autoplay blocked:`, error);
+                setIsPlaying(false);
+                setIsLoading(false);
+                setAutoplayBlocked(true); // 🔥 設定自動播放被阻擋狀態
+                
+                // 🔥 顯示自動播放被阻擋的提示
+                showAlert('需點擊畫面才能播放影片');
+              });
+          } else {
+            setIsPlaying(false);
+            setIsLoading(false);
+          }
+        };
+
+        // 🔥 監聽 canplay 事件
+        video.addEventListener('canplay', handleCanPlay);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (isListMode) {
+            // console.log(`[${instanceId.current}] Video loaded - Video: ${videoIndex + 1}, Camera: ${cameraIndex + 1}, URL: ${videoUrl}`);
+          } else {
+            // console.log(`[${instanceId.current}] Video loaded - Camera: ${cameraIndex + 1}, URL: ${videoUrl}`);
+          }
+          
+          // 🔥 如果影片已經可以播放，直接觸發 canplay 處理
+          if (video.readyState >= 3) {
+            handleCanPlay();
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error(`[${instanceId.current}] HLS Error:`, data);
+          setIsLoading(false);
+          
+          // 🔥 移除 canplay 事件監聽器
+          video.removeEventListener('canplay', handleCanPlay);
+          
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log(`[${instanceId.current}] Trying to recover from network error`);
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log(`[${instanceId.current}] Trying to recover from media error`);
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error(`[${instanceId.current}] Fatal error, cannot recover`);
+                cleanupHls();
+                break;
+            }
+          }
+        });
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // 其他浏览器原生支持（少见）
+        cleanupHls();
+        video.src = videoUrl;
+        video.load();
+      } else {
+        setIsLoading(false);
+        showAlert('这个浏览器不支持 HLS 播放');
+      }
     }, [isListMode, videoList, videoSources, autoPlay, userInteracted, pauseOthersOnPlay, pauseOtherInstances, cleanupHls, saveCurrentState, calculateNewAngles, showAlert]);
   
     const handleCameraSwitch = useCallback((direction) => {
@@ -1348,6 +1426,44 @@ function ThreejsCanvasComponent({
           }
         };
       }, []);
+
+      // 🔥 处理页面切出/切入重载解码器
+      useEffect(() => {
+        const onPageHide = () => {
+          const v = videoRef.current;
+          if (!v) return;
+          lastStateRef.current = { t: v.currentTime || 0, playing: !v.paused };
+          try { v.pause(); } catch {}
+        };
+
+        const onPageShow = () => {
+          const v = videoRef.current;
+          if (!v) return;
+
+          // 只对原生 HLS 做 reset（Safari/iOS）
+          if ((isIOS || isSafari) && v.canPlayType('application/vnd.apple.mpegurl')) {
+            v.src = currentVideoUrlRef.current; // 重新指派同一个来源
+            v.load();
+          }
+
+          // 重建 VideoTexture（避免贴图停格）
+          rebuildVideoTexture();
+
+          // 还原时间与播放
+          const { t, playing } = lastStateRef.current;
+          if (t) v.currentTime = t;
+          if (playing) {
+            v.play().catch(() => {});
+          }
+        };
+
+        window.addEventListener('pagehide', onPageHide);
+        window.addEventListener('pageshow', onPageShow);
+        return () => {
+          window.removeEventListener('pagehide', onPageHide);
+          window.removeEventListener('pageshow', onPageShow);
+        };
+      }, [isIOS, isSafari, rebuildVideoTexture]);
     
       return (
         <div 
@@ -1376,12 +1492,13 @@ function ThreejsCanvasComponent({
           >
             <div className={`video-player ${isUIVisible ? 'ui-visible' : 'ui-hidden'}`}>
               <div className="video-player">
-                <video 
+                <video
                   ref={videoRef}
-                  style={{ display: 'none' }}
+                  className="sr-only-video"
                   crossOrigin="anonymous"
                   playsInline
                   webkit-playsinline="true"
+                  preload="auto"
                 />
                 <div 
                   className={getCanvasContainerClass()}

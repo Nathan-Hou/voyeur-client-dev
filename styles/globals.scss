@@ -100,6 +100,17 @@ input:-moz-autofill {
   color: white !important;
 }
 
+/* 让 video 不可见但保持在渲染树中（iOS 不会断掉影格输出） */
+.sr-only-video {
+  position: fixed;
+  left: -10000px;
+  top: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* 現代瀏覽器 */
 html {
     scrollbar-color: #ffffff3e #000000;
